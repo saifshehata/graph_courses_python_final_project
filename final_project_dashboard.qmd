@@ -609,6 +609,8 @@ Specifically, you can find more information on each dataset and download the raw
 Although Sub-Saharan Africa is highly rich in natural resources, it remains the region with the lowest average daily income over the course of a century. Despite this, or perhaps because of it, it has the highest number of babies per woman compared to any other region, a characteristic that many high-income regions are struggling with as low fertility rates are leading to an aging population.
 
 More information here:
+
 - <https://populationconnection.org/blog/high-fertility-sub-saharan-africa/>
+
 - <https://www.theguardian.com/world/2024/nov/02/the-global-fertility-crisis-are-fewer-babies-a-good-or-a-bad-thing-experts-are-divided>
 :::
