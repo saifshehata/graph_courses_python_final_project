@@ -70,7 +70,7 @@ combined_mean = (
     .reset_index()
 )
 
-# Sub-Saharan Africa is the region with most babies per women.
+# Sub-Saharan Africa is the region with most babies per woman.
 babies_line_mean = (
     px.line(
         combined_mean,
@@ -127,7 +127,7 @@ income_line_mean = (
 
 # Conclusions:
 # Although both Sub-Saharan Africa and South Asia have the lowest average daily income,
-# only Sub-Saharan Africa is the region with mose babies per women.
+# only Sub-Saharan Africa is the region with mose babies per woman.
 ```
 
 
@@ -147,7 +147,7 @@ babies_map = (
         # range_color=(0, 30),
         animation_frame="year",  # Column to use for the timeline,
         labels={"babies": "No. babies"},
-        title="No. of babies per women",
+        title="No. of babies per woman",
     )
     .update_layout(
         margin={"r": 0, "t": 50, "l": 0, "b": 0},  # Update margis to accommodate title
@@ -273,7 +273,7 @@ combined_max = (
 ```
 
 ```{python}
-# Get the highest, lowest and average nr. babies per women
+# Get the highest, lowest and average nr. babies per woman
 max_babies = combined_final.sort_values("babies", ascending=False).head(1).squeeze()
 max_babies_country = max_babies["country"]
 max_babies_year = str(max_babies["year"])
@@ -301,8 +301,8 @@ min_income_year = str(min_income["year"])
 min_income_count = str(min_income["income"])
 
 
-# Hghest birth rate in the 100 year perios is Yemen with 8.86 babies per woman in 1985!
-# Lowest birth rate in the 100 year period is South Korea with 0.81 babies per women in 2020!
+# Hghest fertility rate in the 100 year perios is Yemen with 8.86 babies per woman in 1985!
+# Lowest fertility rate in the 100 year period is South Korea with 0.81 babies per woman in 2020!
 ```
 
 
@@ -331,8 +331,8 @@ income_babies_scatter = (
         facet_col_wrap=2,
         facet_row_spacing=0.15, # Give some space for readability of xaxis ticks and facet labels.
         # labels={"babies": "No. of babies", "income": "Daily income ($)"},
-        # title="Low average daily income (USD) is associated with increased number of babies per women",
-        # title="Number of babies per women decreases as wages increase"
+        # title="Low average daily income (USD) is associated with increased number of babies per woman",
+        # title="Number of babies per woman decreases as wages increase"
     )
     # # Reverse x-axis order for all facets.
     # .for_each_xaxis(lambda x: x.update(dict(autorange="reversed")))
@@ -361,7 +361,7 @@ income_babies_scatter = (
         font=dict(size=14),
     )
     .add_annotation(
-        text="No. of babies per women",  # Global y-axis label
+        text="No. of babies per woman",  # Global y-axis label
         x=-0.1,
         y=0.5,  # Adjust x and y to position the label
         xref="paper",
@@ -456,12 +456,12 @@ double_line_plot = (
 
 ## Row1 {height="20%"}
 
-::: {.valuebox title="Highest birth rate" color="success" icon="arrow-up"}
+::: {.valuebox title="Highest fertility rate" color="success" icon="arrow-up"}
 `{python} max_babies_country` (`{python} max_babies_year`) with
 `{python} max_babies_count` babies per woman
 :::
 
-::: {.valuebox title="Lowest birth rate" color="#ffeda0" icon="arrow-down"}
+::: {.valuebox title="Lowest fertility rate" color="#ffeda0" icon="arrow-down"}
 `{python} min_babies_country` (`{python} min_babies_year`) with
 `{python} min_babies_count` babies per woman
 :::
@@ -476,16 +476,16 @@ double_line_plot = (
 babies_map
 ```
 Map showing the change in number of babies per woman over time across all countries of the world.
-The number of babies per woman was high (5-8) in most of the world in 1920, expept for North America, Europe and Australia. Over the course of 100 years, this number decreased in almost all countries, with central Africa being the region with the highest birth rate.
+The number of babies per woman was high (5-8) in most of the world in 1920, expept for North America, Europe and Australia. Over the course of a century, this number decreased in almost all countries, with central Africa being the region with the highest fertility rate.
 :::
 
 ::: {.card}
-### Sub-Saharan Africa has double the birth rate as America {width="50%"}
+### Sub-Saharan Africa has double the fertility rate of America {width="50%"}
 
 ```{python}
 babies_line_mean
 ```
-Countries were grouped into six regions, and the number of babies per woman averaged per region by year. Although all six regions show a decrease in birth rate from 1920 to 2020, Sub-Saharan Africa remains the region with the highest average rate.
+Countries were grouped into six regions, and the number of babies per woman averaged per region by year. Although all six regions show a decrease in fertility rate from 1920 to 2020, Sub-Saharan Africa remains the region with the highest average fertility rate.
 :::
 
 
@@ -515,17 +515,17 @@ Countries were grouped into six regions, and the number of babies per woman aver
 ```{python}
 income_map
 ```
-Map showing the change in income over time across all countries of the world. Notice that central Africa has the lowest change in income over 100 years, and North America, Europe and Australia remain the countries with the highest income throughout the century, with the addition of Gulf states starting around the late 1960s due to the oil industry.
+Map showing the change in income over time across all countries of the world. Notice that central Africa has the lowest change in income over the course of a century, while North America, Europe and Australia remain the countries with the highest income, with the addition of Gulf states starting around the late 1960s due to the oil industry.
 Note that the income scale limit is set to 30 for better visual comparison between Sub-Saharan Africa and the rest of the world. It is not meant to compare two high income countries, as any income above 30 will have the same color on the map.
 :::
 
 ::: {.card}
-### Lowest in come in two regions, including Sub-Saharan Africa {width="50%"}
+### Sub-Saharan Africa and South Asia have the lowest average daily income {width="50%"}
 
 ```{python}
 income_line_mean
 ```
-Countries were grouped into six regions, and the daily income averaged per region by year.
+Countries were grouped into six regions and the daily income averaged per region by year.
 This plot shows the change in average income over time in six regions of the world. Income is shown to increase in some regions more than others, with Sub-Saharan Africa having the least increase in income.
 :::
 
@@ -539,22 +539,23 @@ This plot shows the change in average income over time in six regions of the wor
 
 
 ::: {.card}
-### High daily income (USD) is associated with low birth rate {width="50%"}
+### High daily income (USD) is associated with low fertility rate {width="50%"}
 
 ```{python}
 income_babies_scatter
 ```
 Data points were plotted regardless of which year they refer to (i.e. they are not in chronological order).
-The plot shows ther there is a general trend where higher income is associated with a low number of babies per woman, regardless of historical time. Exceptinos to this trend include Qatar, Kuwait, UAE, Brunai, and Equatorial Guinea.
+The plot shows that there is a general trend where higher income is associated with a low number of babies per woman, regardless of historical time. Exceptions to this trend include Qatar, Kuwait, and the UAE (Middle East & North Africa), Brunai (East Asia Pacific), and Equatorial Guinea (Sub-Saharan Africa).
 :::
 
 ::: {.card}
-### Income and birth rate move in opposite directions {width="50%"}
+### Income and fertility rate move in opposite directions {width="50%"}
 
 ```{python}
 double_line_plot
 ```
-The change in number of babies per woman over time was plotted alongside the change in daily income. This figure shows that in almost all regions, as the daily income increases over the years, the number of babies per women decreases, with the notable exception of Sub-Saharan Africa, in which there does not seem to be a noticeable increase in income, and the number of babies per woman has not noticeably decreased as it has in other regions.
+The change in number of babies per woman over time was plotted alongside the change in daily income in each region. This figure shows that in almost all regions, as the daily income increases over the years, the number of babies per woman decreases.
+This trend can also be seen in Sub-Saharan Africa, though it is much less pronounced.
 :::
 
 
@@ -588,7 +589,7 @@ itables.show(
 Data were downloaded from Gapminder at <https://www.gapminder.org/data/>.
 Specifically, you can find more information on each dataset and download the raw data using the following links:
 
-- Babies per women (fertility rate):
+- Babies per woman (fertility rate):
 <https://docs.google.com/spreadsheets/d/1j6zkY_a1vX7RtIGKsC9V6AXyfUgtYZl52_SCezwESZM/edit?gid=501532268#gid=501532268>
 
 - Average daily income:
@@ -605,5 +606,9 @@ Specifically, you can find more information on each dataset and download the raw
 
 ::: {.card title="Conclusions"}
 
-Though Sub-Saharan Africa is highly rich in natural resources, it remains the region with the lowest average daily income over the course of a century. Despite this, or perhaps because of it, it has the highest number of babies per woman compared to any other region, a feature that many high-income regions are struggling with and are having a difficult time catching up.
+Although Sub-Saharan Africa is highly rich in natural resources, it remains the region with the lowest average daily income over the course of a century. Despite this, or perhaps because of it, it has the highest number of babies per woman compared to any other region, a characteristic that many high-income regions are struggling with as low fertility rates are leading to an aging population.
+
+More information here:
+- <https://populationconnection.org/blog/high-fertility-sub-saharan-africa/>
+- <https://www.theguardian.com/world/2024/nov/02/the-global-fertility-crisis-are-fewer-babies-a-good-or-a-bad-thing-experts-are-divided>
 :::
