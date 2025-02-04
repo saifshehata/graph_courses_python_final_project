@@ -1,0 +1,609 @@
+---
+title: "Assessing the relationship between daily income and number of babies per woman"
+format: dashboard
+author: "Saifeldin Shehata"
+---
+
+```{python}
+import pandas as pd
+import numpy as np
+import plotly.express as px
+import country_converter as cc
+```
+
+
+```{python}
+# Read in data.
+babies = pd.read_csv("data/children_per_woman_total_fertility.csv")
+income = pd.read_csv("data/mincpcap_cppp.csv")
+# http://gapm.io/dl_geo
+geo = pd.read_csv(
+    "data/Data Geographies - v2 - by Gapminder - list-of-countries-etc.csv"
+)
+
+# Update countries not found in ISO3 so that they are found.
+babies["country"].replace("UAE", "United Arab Emirates", inplace=True)
+babies["country_code"] = cc.convert(babies["country"], to="ISO3")
+income["country"].replace("UAE", "United Arab Emirates", inplace=True)
+income["country_code"] = cc.convert(income["country"], to="ISO3")
+geo["country_code"] = cc.convert(geo["name"], to="ISO3")
+geo_sub = geo[["country_code", "four_regions", "six_regions", "eight_regions"]]
+
+# Melt data (pivot longer).
+babies_long = babies.melt(
+    id_vars=["country", "country_code"], var_name="year", value_name="babies"
+)
+income_long = income.melt(
+    id_vars=["country", "country_code"], var_name="year", value_name="income"
+)
+
+# Check the difference vetween dataframes. Babies df is longer then income df.
+# babies_long.shape[0] - income_long.shape[  0]  # 602
+# set(babies["country"]) - set(income["country"]) # {'Holy See', 'Liechtenstein'}
+
+# Decided to remove these 2 countries from babies df and only keep those that match with income df.
+combined = pd.merge(
+    income_long, babies_long, on=["country", "country_code", "year"], how="left"
+)
+
+# Merge with continent and region info.
+combined_regions = pd.merge(combined, geo_sub, on=["country_code"], how="left")
+
+# Subset to 100yrs.
+combined_regions["year"] = combined_regions["year"].astype(int)
+combined_final = combined_regions.query("year >= 1920 & year <= 2020")
+```
+
+
+```{python}
+## Line mean plots for 1st and 2nd indicators.
+
+# Get mean of babies and income for the plot.
+combined_mean = (
+    combined_final.groupby(["six_regions", "year"])
+    .agg(
+        babies=("babies", "mean"),
+        income=("income", "mean"),
+        sd_babies=("babies", "std"),
+        sd_income=("income", "std"),
+    )
+    .reset_index()
+)
+
+# Sub-Saharan Africa is the region with most babies per women.
+babies_line_mean = (
+    px.line(
+        combined_mean,
+        x="year",
+        y="babies",
+        # error_y='sd_babies',
+        color="six_regions",
+        title="No. of babies per woman averaged by region",
+        labels={"babies": "No. babies per woman", "year": ""},
+    )
+    .update_layout(legend_title_text="")  # Remove legend title
+    .update_layout(legend=dict(x=0.02, y=0.05))  # Change legend position
+    .update_layout(legend=dict(bgcolor="rgba(0,0,0,0)"))  # Transparent background
+    .for_each_trace(
+        lambda trace: trace.update(
+            name=trace.name.replace("south_asia", "South Asia")
+            .replace("sub_saharan_africa", "Sub-Saharan Africa")
+            .replace("europe_central_asia", "Europe & Central Asia")
+            .replace("middle_east_north_africa", "Middle East & North Africa")
+            .replace("america", "America")
+            .replace("east_asia_pacific", "East Asia Pacific")
+        )
+    )
+)
+
+# .update_layout(showlegend=False)
+# .update(layout_showlegend=False)
+
+# Sub-Saharan Africa and South Asia have the lowest average income.
+income_line_mean = (
+    px.line(
+        combined_mean,
+        x="year",
+        y="income",
+        # error_y='sd_babies',
+        color="six_regions",
+        title="Daily income (USD) averaged by region",
+        labels={"income": "Daily income (USD)", "year": ""},
+    )
+    .update_layout(legend_title_text="")  # Remove legend title
+    .update_layout(legend=dict(x=0.05, y=0.95))  # Change legend position
+    .update_layout(legend=dict(bgcolor="rgba(0,0,0,0)"))  # Transparent background
+    .for_each_trace(
+        lambda trace: trace.update(
+            name=trace.name.replace("south_asia", "South Asia")
+            .replace("sub_saharan_africa", "Sub-Saharan Africa")
+            .replace("europe_central_asia", "Europe & Central Asia")
+            .replace("middle_east_north_africa", "Middle East & North Africa")
+            .replace("america", "America")
+            .replace("east_asia_pacific", "East Asia Pacific")
+        )
+    )
+)
+
+# Conclusions:
+# Although both Sub-Saharan Africa and South Asia have the lowest average daily income,
+# only Sub-Saharan Africa is the region with mose babies per women.
+```
+
+
+```{python}
+## Map for 1st and 2nd indicators.
+
+# Country map animated by year.
+babies_map = (
+    px.choropleth(
+        combined_final,
+        locations="country",  # Column containing location codes
+        locationmode="country names",
+        # locationmode="ISO-3",     # Use ISO-3 country codes
+        color="babies",  # Column for color intensity
+        # scope="africa"
+        color_continuous_scale="ylgn",  # Color scale
+        # range_color=(0, 30),
+        animation_frame="year",  # Column to use for the timeline,
+        labels={"babies": "No. babies"},
+        title="No. of babies per women",
+    )
+    .update_layout(
+        margin={"r": 0, "t": 50, "l": 0, "b": 0},  # Update margis to accommodate title
+        coloraxis_colorbar=dict(title=""),  # Remove color legend title
+    )
+    # Change title position
+    .update_layout(
+        title=dict(
+            x=0.5,  # Centered (0=left, 1=right)
+            y=0.95,  # Move higher or lower
+            xanchor="center",
+            yanchor="top",
+        )
+    )
+    # Bring the color legend closer
+    .update_layout(
+        coloraxis_colorbar=dict(
+            x=1,  # Move left (default is ~1.0)
+            y=0.5,  # Center vertically
+            xanchor="left",
+        )
+    )
+    # Move the play button & slider UP and CLOSER
+    .update_layout(
+        updatemenus=[dict(
+            type="buttons",
+            direction="left",
+            x=0.1,  # Adjust horizontal position
+            y=0.1,  # Move up (default is ~-0.1)
+            xanchor="right",
+            yanchor="top"
+        )],
+        sliders=[dict(
+            pad={"b": 10},  # Reduce bottom padding
+            x=0.1,
+            y=0.1,  # Move slider up
+            xanchor="left",
+            yanchor="top"
+        )]
+    )
+)
+# # Update plot dimentions
+# .update_layout(
+#     width=700,  # Increase width
+#     height=400,  # Increase height
+#     margin={"r":0, "t":50, "l":0, "b":0}  # Reduce margins
+# )
+
+# Colour range is from 0-30, so anything 25 or above will have the max colour.
+# This concentrates on showing how Africa (esp. central Africa) compares to the rest of the world, but should not be used to compare between other countries.
+income_map = (
+    px.choropleth(
+        combined_final,
+        locations="country",  # Column containing location codes
+        locationmode="country names",
+        # locationmode="ISO-3",     # Use ISO-3 country codes
+        color="income",  # Column for color intensity
+        # scope="africa"
+        color_continuous_scale="ylgn",  # Color scale
+        range_color=(0, 30),
+        animation_frame="year",  # Column to use for the timeline,
+        labels={"income": "Daily income (USD)"},
+        title="Average daily income (USD)"
+    )
+    .update_layout(
+        margin={"r": 0, "t": 50, "l": 0, "b": 0},  # Update margis to accommodate title
+        coloraxis_colorbar=dict(title=""),  # Remove color legend title
+    )
+    # Change title position
+    .update_layout(
+        title=dict(
+            x=0.5,  # Centered (0=left, 1=right)
+            y=0.95,  # Move higher or lower
+            xanchor="center",
+            yanchor="top",
+        )
+    )
+    # Bring the color legend closer
+    .update_layout(
+        coloraxis_colorbar=dict(
+            x=1,  # Move left (default is ~1.0)
+            y=0.5,  # Center vertically
+            xanchor="left",
+        )
+    )
+    # Move the play button & slider UP and CLOSER
+    .update_layout(
+        updatemenus=[dict(
+            type="buttons",
+            direction="left",
+            x=0.1,  # Adjust horizontal position
+            y=0.1,  # Move up (default is ~-0.1)
+            xanchor="right",
+            yanchor="top"
+        )],
+        sliders=[dict(
+            pad={"b": 10},  # Reduce bottom padding
+            x=0.1,
+            y=0.1,  # Move slider up
+            xanchor="left",
+            yanchor="top"
+        )]
+    )
+)
+```
+
+```{python}
+## Unused code, but kept for reference.
+
+# Get countries with highest and lowest values for both data sets.
+combined_max = (
+    # combined_final.query("year==1920 or year==2020")
+    combined_final
+    .groupby(["country"])
+    .agg(
+        max_babies=("babies", "max"),
+        min_babies=("babies", "min"),
+        max_income=("income", "max"),
+        min_income=("income", "min"),
+    )
+    .reset_index()
+)
+```
+
+```{python}
+# Get the highest, lowest and average nr. babies per women
+max_babies = combined_final.sort_values("babies", ascending=False).head(1).squeeze()
+max_babies_country = max_babies["country"]
+max_babies_year = str(max_babies["year"])
+max_babies_count = str(max_babies["babies"])
+
+# max_babies = combined_final["babies"].max()
+# max_babies_country = combined_final.query("babies==@max_babies")["country"].squeeze
+# max_babies_year = combined_final.query("babies==@max_babies")["year"].uniqe
+
+min_babies = combined_final.sort_values("babies", ascending=True).head(1).squeeze()
+min_babies_country = min_babies["country"]
+min_babies_year = str(min_babies["year"])
+min_babies_count = str(min_babies["babies"])
+babies_valuebox = min_babies_country + " (" + min_babies_year + ", " + min_babies_count + " babies" + ")"
+
+# Highest and lowest income countries
+max_income = combined_final.sort_values("income", ascending=False).head(1).squeeze()
+max_income_country = max_income["country"]
+max_income_year = str(max_income["year"])
+max_income_count = str(max_income["income"])
+
+min_income = combined_final.sort_values("income", ascending=True).head(1).squeeze()
+min_income_country = min_income["country"]
+min_income_year = str(min_income["year"])
+min_income_count = str(min_income["income"])
+
+
+# Hghest birth rate in the 100 year perios is Yemen with 8.86 babies per woman in 1985!
+# Lowest birth rate in the 100 year period is South Korea with 0.81 babies per women in 2020!
+```
+
+
+```{python}
+# Custom facet labels
+custom_labels = {
+    "south_asia": "South Asia",
+    "sub_saharan_africa": "Sub-Saharan Africa",
+    "europe_central_asia": "Europe & Central Asia",
+    "middle_east_north_africa": "Middle East & North Africa",
+    "america": "America",
+    "east_asia_pacific": "East Asia Pacific"
+}
+
+# Income vs babies scatter.
+income_babies_scatter = (
+    px.scatter(
+        # combined_final.query("year >= 2000 & year <= 2020"),
+        combined_final,
+        x="income",
+        y="babies",
+        color="six_regions",
+        hover_name="country",
+        hover_data=["year"],
+        facet_col="six_regions",
+        facet_col_wrap=2,
+        facet_row_spacing=0.15, # Give some space for readability of xaxis ticks and facet labels.
+        # labels={"babies": "No. of babies", "income": "Daily income ($)"},
+        # title="Low average daily income (USD) is associated with increased number of babies per women",
+        # title="Number of babies per women decreases as wages increase"
+    )
+    # # Reverse x-axis order for all facets.
+    # .for_each_xaxis(lambda x: x.update(dict(autorange="reversed")))
+    # Free up/unlink x-axes scales, so each facet will have its own scale.
+    .update_xaxes(matches=None)
+    # Decrease point size to better visibility.
+    .update_traces(marker={"size": 2.5})
+    # Remove facet labels.
+    # .for_each_annotation(lambda a: a.update(text=""))
+    # Update facet labels with region names.
+    .for_each_annotation(lambda ann: ann.update(text=custom_labels.get(ann.text.split("=")[-1], ann.text)))
+    # Show xaxis ticks for each facet.
+    .for_each_xaxis(lambda x: x.update(showticklabels=True))
+    # Remove xaxis and yaxis labels.
+    .for_each_xaxis(lambda x: x.update(title_text=None))
+    .for_each_yaxis(lambda y: y.update(title_text=None))
+    # Add custom labels for axes.
+    # Add global x-axis and y-axis labels as annotations
+    .add_annotation(
+        text="Average daily income (USD)",  # Global x-axis label
+        x=0.5,
+        y=-0.15,  # Adjust x and y to position the label
+        xref="paper",
+        yref="paper",
+        showarrow=False,
+        font=dict(size=14),
+    )
+    .add_annotation(
+        text="No. of babies per women",  # Global y-axis label
+        x=-0.1,
+        y=0.5,  # Adjust x and y to position the label
+        xref="paper",
+        yref="paper",
+        showarrow=False,
+        font=dict(size=14),
+        textangle=-90,  # Rotate the y-axis label
+    )
+    # Remove the color legend title.
+    .update_layout(legend_title_text="")  # Remove legend title
+    # Adjust margins for better spacing.
+    .update_layout(margin=dict(t=70, l=80, r=50, b=80))
+    # Remove color legend altogether.
+    .update_layout(showlegend=False)
+)
+
+```
+
+```{python}
+# Double line plot for each region.
+
+# import plotly.graph_objects as go
+
+# Custom facet labels
+custom_labels = {
+    "south_asia": "South Asia",
+    "sub_saharan_africa": "Sub-Saharan Africa",
+    "europe_central_asia": "Europe & Central Asia",
+    "middle_east_north_africa": "Middle East & North Africa",
+    "america": "America",
+    "east_asia_pacific": "East Asia Pacific"
+}
+
+double_line_plot = (
+    px.line(
+        combined_mean,
+        x="year",
+        # y=['babies', 'income'],
+        y=["babies", "income"],
+        facet_col="six_regions",
+        facet_col_wrap=2,
+    )
+    # Free scales, so each facet will have its own scale.
+    .update_yaxes(matches=None)
+    .update_layout(legend_title_text="")  # Remove legend title
+    .update_layout(legend=dict(x=0, y=-0.25))  # Change legend position
+    .update_layout(legend=dict(bgcolor="rgba(0,0,0,0)"))  # Transparent background
+    # Update facet labels with region names.
+    .for_each_annotation(lambda ann: ann.update(text=custom_labels.get(ann.text.split("=")[-1], ann.text)))
+    # Update legend labels.
+    .for_each_trace(
+        lambda trace: trace.update(
+            name=trace.name
+            .replace("babies", "No. babies per woman")
+            .replace("income", "Daily income (USD)")
+        )
+    )
+    # Remove xaxis and yaxis labels.
+    .for_each_xaxis(lambda x: x.update(title_text=None))
+    .for_each_yaxis(lambda y: y.update(title_text=None))
+    # Add custom labels for axes.
+    # Add global x-axis and y-axis labels as annotations
+    .add_annotation(
+        text="Year",  # Global x-axis label
+        x=0.5,
+        y=-0.15,  # Adjust x and y to position the label
+        xref="paper",
+        yref="paper",
+        showarrow=False,
+        font=dict(size=14),
+    )
+    .add_annotation(
+        text="Count",  # Global y-axis label
+        x=-0.1,
+        y=0.5,  # Adjust x and y to position the label
+        xref="paper",
+        yref="paper",
+        showarrow=False,
+        font=dict(size=14),
+        textangle=-90,  # Rotate the y-axis label
+    )
+
+)
+```
+
+
+
+
+
+
+# Babies per woman
+
+## Row1 {height="20%"}
+
+::: {.valuebox title="Highest birth rate" color="success" icon="arrow-up"}
+`{python} max_babies_country` (`{python} max_babies_year`) with
+`{python} max_babies_count` babies per woman
+:::
+
+::: {.valuebox title="Lowest birth rate" color="#ffeda0" icon="arrow-down"}
+`{python} min_babies_country` (`{python} min_babies_year`) with
+`{python} min_babies_count` babies per woman
+:::
+
+
+## Row3 {height="80%"}
+
+::: {.card}
+### Central Africa is the highest contributor of new births worldwide {width="50%"}
+
+```{python}
+babies_map
+```
+Map showing the change in number of babies per woman over time across all countries of the world.
+The number of babies per woman was high (5-8) in most of the world in 1920, expept for North America, Europe and Australia. Over the course of 100 years, this number decreased in almost all countries, with central Africa being the region with the highest birth rate.
+:::
+
+::: {.card}
+### Sub-Saharan Africa has double the birth rate as America {width="50%"}
+
+```{python}
+babies_line_mean
+```
+Countries were grouped into six regions, and the number of babies per woman averaged per region by year. Although all six regions show a decrease in birth rate from 1920 to 2020, Sub-Saharan Africa remains the region with the highest average rate.
+:::
+
+
+
+
+
+# Daily income
+
+## Row1 {height="20%"}
+
+::: {.valuebox title="Highest daily income" color="success" icon="arrow-up"}
+`{python} max_income_country` (`{python} max_income_year`) with
+`{python} max_income_count` average daily income
+:::
+
+::: {.valuebox title="Lowest daily income" color="#ffeda0" icon="arrow-down"}
+`{python} min_income_country` (`{python} min_income_year`) with
+`{python} min_income_count` average daily income
+:::
+
+
+## Row3 {height="80%"}
+
+::: {.card}
+### Income remains low in central Africa over time {width="50%"}
+
+```{python}
+income_map
+```
+Map showing the change in income over time across all countries of the world. Notice that central Africa has the lowest change in income over 100 years, and North America, Europe and Australia remain the countries with the highest income throughout the century, with the addition of Gulf states starting around the late 1960s due to the oil industry.
+Note that the income scale limit is set to 30 for better visual comparison between Sub-Saharan Africa and the rest of the world. It is not meant to compare two high income countries, as any income above 30 will have the same color on the map.
+:::
+
+::: {.card}
+### Lowest in come in two regions, including Sub-Saharan Africa {width="50%"}
+
+```{python}
+income_line_mean
+```
+Countries were grouped into six regions, and the daily income averaged per region by year.
+This plot shows the change in average income over time in six regions of the world. Income is shown to increase in some regions more than others, with Sub-Saharan Africa having the least increase in income.
+:::
+
+
+
+
+
+# Income vs. Babies
+
+## Row3 {height="100%"}
+
+
+::: {.card}
+### High daily income (USD) is associated with low birth rate {width="50%"}
+
+```{python}
+income_babies_scatter
+```
+Data points were plotted regardless of which year they refer to (i.e. they are not in chronological order).
+The plot shows ther there is a general trend where higher income is associated with a low number of babies per woman, regardless of historical time. Exceptinos to this trend include Qatar, Kuwait, UAE, Brunai, and Equatorial Guinea.
+:::
+
+::: {.card}
+### Income and birth rate move in opposite directions {width="50%"}
+
+```{python}
+double_line_plot
+```
+The change in number of babies per woman over time was plotted alongside the change in daily income. This figure shows that in almost all regions, as the daily income increases over the years, the number of babies per women decreases, with the notable exception of Sub-Saharan Africa, in which there does not seem to be a noticeable increase in income, and the number of babies per woman has not noticeably decreased as it has in other regions.
+:::
+
+
+
+
+
+# Resources and Data Download
+
+## Row {height="100%"}
+
+::: {.card title="Combined dataset"}
+Dataset with number of babies per woman, average daily income, and regions combined into a single dataset from which all figures were generated.
+
+
+```{python}
+import itables
+# Display full dataset with itables
+itables.show(
+    combined_final,
+    caption="Combined Dataset",
+    buttons=["csvHtml5"],
+    maxRows=10
+)
+
+```
+:::
+
+
+::: {.card title="Raw data"}
+
+Data were downloaded from Gapminder at <https://www.gapminder.org/data/>.
+Specifically, you can find more information on each dataset and download the raw data using the following links:
+
+- Babies per women (fertility rate):
+<https://docs.google.com/spreadsheets/d/1j6zkY_a1vX7RtIGKsC9V6AXyfUgtYZl52_SCezwESZM/edit?gid=501532268#gid=501532268>
+
+- Average daily income:
+<https://docs.google.com/spreadsheets/d/1oyaSmlcX_sofdk4ZLTQA3MWIn5H9SBIouYpFVYxx5Yo/edit?gid=501532268#gid=501532268>
+
+- Geography (countries by region):
+<https://docs.google.com/spreadsheets/d/1qHalit8sXC0R8oVXibc2wa2gY7bkwGzOybEMTWp-08o/edit?gid=1597424158#gid=1597424158>
+:::
+
+
+# Conclusions
+
+## Row {height="100%"}
+
+::: {.card title="Conclusions"}
+
+Though Sub-Saharan Africa is highly rich in natural resources, it remains the region with the lowest average daily income over the course of a century. Despite this, or perhaps because of it, it has the highest number of babies per woman compared to any other region, a feature that many high-income regions are struggling with and are having a difficult time catching up.
+:::
